@@ -32,12 +32,16 @@
 				color:#fff;
 			}
 
+			#stats { position: absolute; top:0; left: 0 }
+			#stats #fps { background: transparent !important }
+			#stats #fps #fpsText { color: #aaa !important }
+			#stats #fps #fpsGraph { display: none }
 		</style>
 	</head>
 
 	<body>
 		<div id="info">
-			<a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - webgl simple single-pass skin material with <a href="http://mmikkelsen3d.blogspot.sk/2011/07/derivative-maps.html">tangent-less bump mapping</a> -
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl simple single-pass skin material with <a href="http://mmikkelsen3d.blogspot.sk/2011/07/derivative-maps.html">tangent-less bump mapping</a> -
 			<a href="http://www.ir-ltd.net/infinite-3d-head-scan-released/" target="_blank">Lee Perry-Smith</a> head
 		</div>
 
@@ -45,19 +49,15 @@
 
 		<script src="js/ShaderSkin.js"></script>
 
-		<script src="js/ShaderExtras.js"></script>
+		<script src="js/shaders/CopyShader.js"></script>
 
 		<script src="js/postprocessing/EffectComposer.js"></script>
 		<script src="js/postprocessing/RenderPass.js"></script>
-		<script src="js/postprocessing/BloomPass.js"></script>
-		<script src="js/postprocessing/FilmPass.js"></script>
-		<script src="js/postprocessing/DotScreenPass.js"></script>
-		<script src="js/postprocessing/TexturePass.js"></script>
 		<script src="js/postprocessing/ShaderPass.js"></script>
 		<script src="js/postprocessing/MaskPass.js"></script>
 
 		<script src="js/Detector.js"></script>
-		<script src="js/Stats.js"></script>
+		<script src="js/libs/stats.min.js"></script>
 
 		<script>
 
@@ -188,7 +188,7 @@
 				renderer.setClearColor( color, 1 );
 
 				renderer.shadowMapEnabled = true;
-				renderer.shadowMapCullFrontFaces = false;
+				renderer.shadowMapCullFace = THREE.CullFaceBack;
 
 				renderer.autoClear = false;
 
@@ -203,14 +203,6 @@
 				if ( statsEnabled ) {
 
 					stats = new Stats();
-					stats.domElement.style.position = 'absolute';
-					stats.domElement.style.top = '0px';
-					stats.domElement.style.zIndex = 100;
-
-					stats.domElement.children[ 0 ].children[ 0 ].style.color = "#aaa";
-					stats.domElement.children[ 0 ].style.background = "transparent";
-					stats.domElement.children[ 0 ].children[ 1 ].style.display = "none";
-
 					container.appendChild( stats.domElement );
 
 				}
@@ -223,16 +215,16 @@
 				// BECKMANN
 
 				var effectBeckmann = new THREE.ShaderPass( THREE.ShaderSkin[ "beckmann" ] );
-				var effectScreen = new THREE.ShaderPass( THREE.ShaderExtras[ "screen" ] );
+				var effectCopy = new THREE.ShaderPass( THREE.CopyShader );
 
-				effectScreen.renderToScreen = true;
+				effectCopy.renderToScreen = true;
 
 				var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBufer: false };
 				var rtwidth = 512, rtheight = 512;
 
 				composerBeckmann = new THREE.EffectComposer( renderer, new THREE.WebGLRenderTarget( rtwidth, rtheight, pars ) );
 				composerBeckmann.addPass( effectBeckmann );
-				composerBeckmann.addPass( effectScreen );
+				composerBeckmann.addPass( effectCopy );
 
 				// EVENTS
 
