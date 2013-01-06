@@ -12,7 +12,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 	_renderData, _elements, _lights,
 	_projector = new THREE.Projector(),
 
-	_canvas = parameters.canvas !== undefined ? parameters.canvas : document.createElement( 'canvas' ),
+	_canvas = parameters.canvas !== undefined
+			? parameters.canvas
+			: document.createElement( 'canvas' ),
 
 	_canvasWidth, _canvasHeight, _canvasWidthHalf, _canvasHeightHalf,
 	_context = _canvas.getContext( '2d' ),
@@ -41,6 +43,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 	_color3 = new THREE.Color(),
 	_color4 = new THREE.Color(),
 
+	_diffuseColor = new THREE.Color(),
+	_emissiveColor = new THREE.Color(),
+
 	_patterns = {}, _imagedatas = {},
 
 	_near, _far,
@@ -48,9 +53,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 	_image, _uvs,
 	_uv1x, _uv1y, _uv2x, _uv2y, _uv3x, _uv3y,
 
-	_clipRect = new THREE.Rectangle(),
-	_clearRect = new THREE.Rectangle(),
-	_bboxRect = new THREE.Rectangle(),
+	_clipBox = new THREE.Box2(),
+	_clearBox = new THREE.Box2(),
+	_elemBox = new THREE.Box2(),
 
 	_enableLighting = false,
 	_ambientLight = new THREE.Color(),
@@ -84,6 +89,12 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 	this.domElement = _canvas;
 
+	this.devicePixelRatio = parameters.devicePixelRatio !== undefined
+				? parameters.devicePixelRatio
+				: window.devicePixelRatio !== undefined
+					? window.devicePixelRatio
+					: 1;
+
 	this.autoClear = true;
 	this.sortObjects = true;
 	this.sortElements = true;
@@ -101,16 +112,22 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 	this.setSize = function ( width, height ) {
 
-		_canvasWidth = width;
-		_canvasHeight = height;
+		_canvasWidth = width * this.devicePixelRatio;
+		_canvasHeight = height * this.devicePixelRatio;
+
 		_canvasWidthHalf = Math.floor( _canvasWidth / 2 );
 		_canvasHeightHalf = Math.floor( _canvasHeight / 2 );
 
 		_canvas.width = _canvasWidth;
 		_canvas.height = _canvasHeight;
 
-		_clipRect.set( - _canvasWidthHalf, - _canvasHeightHalf, _canvasWidthHalf, _canvasHeightHalf );
-		_clearRect.set( - _canvasWidthHalf, - _canvasHeightHalf, _canvasWidthHalf, _canvasHeightHalf );
+		_canvas.style.width = width + 'px';
+		_canvas.style.height = height + 'px';
+
+		_clipBox.min.set( - _canvasWidthHalf, - _canvasHeightHalf );
+		_clipBox.max.set( _canvasWidthHalf, _canvasHeightHalf );
+		_clearBox.min.set( - _canvasWidthHalf, - _canvasHeightHalf );
+		_clearBox.max.set( _canvasWidthHalf, _canvasHeightHalf );
 
 		_contextGlobalAlpha = 1;
 		_contextGlobalCompositeOperation = 0;
@@ -127,7 +144,8 @@ THREE.CanvasRenderer = function ( parameters ) {
 		_clearColor.copy( color );
 		_clearOpacity = opacity !== undefined ? opacity : 1;
 
-		_clearRect.set( - _canvasWidthHalf, - _canvasHeightHalf, _canvasWidthHalf, _canvasHeightHalf );
+		_clearBox.min.set( - _canvasWidthHalf, - _canvasHeightHalf );
+		_clearBox.max.set( _canvasWidthHalf, _canvasHeightHalf );
 
 	};
 
@@ -136,7 +154,8 @@ THREE.CanvasRenderer = function ( parameters ) {
 		_clearColor.setHex( hex );
 		_clearOpacity = opacity !== undefined ? opacity : 1;
 
-		_clearRect.set( - _canvasWidthHalf, - _canvasHeightHalf, _canvasWidthHalf, _canvasHeightHalf );
+		_clearBox.min.set( - _canvasWidthHalf, - _canvasHeightHalf );
+		_clearBox.max.set( _canvasWidthHalf, _canvasHeightHalf );
 
 	};
 
@@ -150,14 +169,14 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 		_context.setTransform( 1, 0, 0, - 1, _canvasWidthHalf, _canvasHeightHalf );
 
-		if ( _clearRect.isEmpty() === false ) {
+		if ( _clearBox.empty() === false ) {
 
-			_clearRect.minSelf( _clipRect );
-			_clearRect.inflate( 2 );
+			_clearBox.intersect( _clipBox );
+			_clearBox.expandByScalar( 2 );
 
 			if ( _clearOpacity < 1 ) {
 
-				_context.clearRect( Math.floor( _clearRect.getX() ), Math.floor( _clearRect.getY() ), Math.floor( _clearRect.getWidth() ), Math.floor( _clearRect.getHeight() ) );
+				_context.clearRect( _clearBox.min.x | 0, _clearBox.min.y | 0, ( _clearBox.max.x - _clearBox.min.x ) | 0, ( _clearBox.max.y - _clearBox.min.y ) | 0 );
 
 			}
 
@@ -168,11 +187,11 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 				setFillStyle( 'rgba(' + Math.floor( _clearColor.r * 255 ) + ',' + Math.floor( _clearColor.g * 255 ) + ',' + Math.floor( _clearColor.b * 255 ) + ',' + _clearOpacity + ')' );
 
-				_context.fillRect( Math.floor( _clearRect.getX() ), Math.floor( _clearRect.getY() ), Math.floor( _clearRect.getWidth() ), Math.floor( _clearRect.getHeight() ) );
+				_context.fillRect( _clearBox.min.x | 0, _clearBox.min.y | 0, ( _clearBox.max.x - _clearBox.min.x ) | 0, ( _clearBox.max.y - _clearBox.min.y ) | 0 );
 
 			}
 
-			_clearRect.empty();
+			_clearBox.makeEmpty();
 
 		}
 
@@ -188,9 +207,13 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 		}
 
-		var e, el, element, material;
+		if ( this.autoClear === true ) {
 
-		this.autoClear === true ? this.clear() : _context.setTransform( 1, 0, 0, - 1, _canvasWidthHalf, _canvasHeightHalf );
+			this.clear();
+
+		}
+
+		_context.setTransform( 1, 0, 0, - 1, _canvasWidthHalf, _canvasHeightHalf );
 
 		_this.info.render.vertices = 0;
 		_this.info.render.faces = 0;
@@ -201,7 +224,7 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 		/* DEBUG
 		_context.fillStyle = 'rgba( 0, 255, 255, 0.5 )';
-		_context.fillRect( _clipRect.getX(), _clipRect.getY(), _clipRect.getWidth(), _clipRect.getHeight() );
+		_context.fillRect( _clipBox.min.x, _clipBox.min.y, _clipBox.max.x - _clipBox.min.x, _clipBox.max.y - _clipBox.min.y );
 		*/
 
 		_enableLighting = _lights.length > 0;
@@ -212,15 +235,15 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 		}
 
-		for ( e = 0, el = _elements.length; e < el; e++ ) {
+		for ( var e = 0, el = _elements.length; e < el; e++ ) {
 
-			element = _elements[ e ];
+			var element = _elements[ e ];
 
-			material = element.material;
+			var material = element.material;
 
 			if ( material === undefined || material.visible === false ) continue;
 
-			_bboxRect.empty();
+			_elemBox.makeEmpty();
 
 			if ( element instanceof THREE.RenderableParticle ) {
 
@@ -236,10 +259,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 				_v1.positionScreen.x *= _canvasWidthHalf; _v1.positionScreen.y *= _canvasHeightHalf;
 				_v2.positionScreen.x *= _canvasWidthHalf; _v2.positionScreen.y *= _canvasHeightHalf;
 
-				_bboxRect.addPoint( _v1.positionScreen.x, _v1.positionScreen.y );
-				_bboxRect.addPoint( _v2.positionScreen.x, _v2.positionScreen.y );
+				_elemBox.setFromPoints( [ _v1.positionScreen, _v2.positionScreen ] );
 
-				if ( _clipRect.intersects( _bboxRect ) === true ) {
+				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
 
 					renderLine( _v1, _v2, element, material, scene );
 
@@ -262,11 +284,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 				}
 
-				_bboxRect.add3Points( _v1.positionScreen.x, _v1.positionScreen.y,
-						      _v2.positionScreen.x, _v2.positionScreen.y,
-						      _v3.positionScreen.x, _v3.positionScreen.y );
+				_elemBox.setFromPoints( [ _v1.positionScreen, _v2.positionScreen, _v3.positionScreen ] );
 
-				if ( _clipRect.intersects( _bboxRect ) === true ) {
+				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
 
 					renderFace3( _v1, _v2, _v3, 0, 1, 2, element, material, scene );
 
@@ -295,12 +315,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 				}
 
-				_bboxRect.addPoint( _v1.positionScreen.x, _v1.positionScreen.y );
-				_bboxRect.addPoint( _v2.positionScreen.x, _v2.positionScreen.y );
-				_bboxRect.addPoint( _v3.positionScreen.x, _v3.positionScreen.y );
-				_bboxRect.addPoint( _v4.positionScreen.x, _v4.positionScreen.y );
+				_elemBox.setFromPoints( [ _v1.positionScreen, _v2.positionScreen, _v3.positionScreen, _v4.positionScreen ] );
 
-				if ( _clipRect.intersects( _bboxRect ) === true ) {
+				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
 
 					renderFace4( _v1, _v2, _v3, _v4, _v5, _v6, element, material, scene );
 
@@ -308,21 +325,21 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 			}
 
+
 			/* DEBUG
 			_context.lineWidth = 1;
 			_context.strokeStyle = 'rgba( 0, 255, 0, 0.5 )';
-			_context.strokeRect( _bboxRect.getX(), _bboxRect.getY(), _bboxRect.getWidth(), _bboxRect.getHeight() );
+			_context.strokeRect( _elemBox.min.x, _elemBox.min.y, _elemBox.max.x - _elemBox.min.x, _elemBox.max.y - _elemBox.min.y );
 			*/
 
-			_clearRect.addRectangle( _bboxRect );
-
+			_clearBox.union( _elemBox );
 
 		}
 
 		/* DEBUG
 		_context.lineWidth = 1;
 		_context.strokeStyle = 'rgba( 255, 0, 0, 0.5 )';
-		_context.strokeRect( _clearRect.getX(), _clearRect.getY(), _clearRect.getWidth(), _clearRect.getHeight() );
+		_context.strokeRect( _clearBox.min.x, _clearBox.min.y, _clearBox.max.x - _clearBox.min.x, _clearBox.max.y - _clearBox.min.y );
 		*/
 
 		_context.setTransform( 1, 0, 0, 1, 0, 0 );
@@ -433,15 +450,16 @@ THREE.CanvasRenderer = function ( parameters ) {
 					scaleX *= element.scale.x * _canvasWidthHalf;
 					scaleY *= element.scale.y * _canvasHeightHalf;
 
-					_bboxRect.set( v1.x - scaleX, v1.y - scaleY, v1.x  + scaleX, v1.y + scaleY );
+					_elemBox.min.set( v1.x - scaleX, v1.y - scaleY );
+					_elemBox.max.set( v1.x + scaleX, v1.y + scaleY );
 
-					if ( _clipRect.intersects( _bboxRect ) === false ) {
+					if ( _clipBox.isIntersectionBox( _elemBox ) === false ) {
 
 						return;
 
 					}
 
-					setFillStyle( material.color.getContextStyle() );
+					setFillStyle( material.color.getStyle() );
 
 					_context.save();
 					_context.translate( v1.x, v1.y );
@@ -464,9 +482,10 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 					// TODO: Rotations break this...
 
-					_bboxRect.set( v1.x - width, v1.y - height, v1.x  + width, v1.y + height );
+					_elemBox.min.set( v1.x - width, v1.y - height );
+					_elemBox.max.set( v1.x + width, v1.y + height );
 
-					if ( _clipRect.intersects( _bboxRect ) === false ) {
+					if ( _clipBox.isIntersectionBox( _elemBox ) === false ) {
 
 						return;
 
@@ -498,16 +517,17 @@ THREE.CanvasRenderer = function ( parameters ) {
 				width = element.scale.x * _canvasWidthHalf;
 				height = element.scale.y * _canvasHeightHalf;
 
-				_bboxRect.set( v1.x - width, v1.y - height, v1.x + width, v1.y + height );
+				_elemBox.min.set( v1.x - width, v1.y - height );
+				_elemBox.max.set( v1.x + width, v1.y + height );
 
-				if ( _clipRect.intersects( _bboxRect ) === false ) {
+				if ( _clipBox.isIntersectionBox( _elemBox ) === false ) {
 
 					return;
 
 				}
 
-				setStrokeStyle( material.color.getContextStyle() );
-				setFillStyle( material.color.getContextStyle() );
+				setStrokeStyle( material.color.getStyle() );
+				setFillStyle( material.color.getStyle() );
 
 				_context.save();
 				_context.translate( v1.x, v1.y );
@@ -536,10 +556,10 @@ THREE.CanvasRenderer = function ( parameters ) {
 				setLineWidth( material.linewidth );
 				setLineCap( material.linecap );
 				setLineJoin( material.linejoin );
-				setStrokeStyle( material.color.getContextStyle() );
+				setStrokeStyle( material.color.getStyle() );
 
 				_context.stroke();
-				_bboxRect.inflate( material.linewidth * 2 );
+				_elemBox.expandByScalar( material.linewidth * 2 );
 
 			}
 
@@ -561,10 +581,18 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 			if ( ( material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshPhongMaterial ) && material.map === null && material.map === null ) {
 
-				if ( _enableLighting === true ) {
+				_diffuseColor.copy( material.color );
+				_emissiveColor.copy( material.emissive );
 
-					var diffuse = material.color;
-					var emissive = material.emissive;
+				if ( material.vertexColors === THREE.FaceColors ) {
+
+					_diffuseColor.r *= element.color.r;
+					_diffuseColor.g *= element.color.g;
+					_diffuseColor.b *= element.color.b;
+
+				}
+
+				if ( _enableLighting === true ) {
 
 					if ( material.wireframe === false && material.shading == THREE.SmoothShading && element.vertexNormalsLength == 3 ) {
 
@@ -576,17 +604,17 @@ THREE.CanvasRenderer = function ( parameters ) {
 						calculateLight( element.v2.positionWorld, element.vertexNormalsWorld[ 1 ], _color2 );
 						calculateLight( element.v3.positionWorld, element.vertexNormalsWorld[ 2 ], _color3 );
 
-						_color1.r = diffuse.r * _color1.r + emissive.r;
-						_color1.g = diffuse.g * _color1.g + emissive.g;
-						_color1.b = diffuse.b * _color1.b + emissive.b;
+						_color1.r = _color1.r * _diffuseColor.r + _emissiveColor.r;
+						_color1.g = _color1.g * _diffuseColor.g + _emissiveColor.g;
+						_color1.b = _color1.b * _diffuseColor.b + _emissiveColor.b;
 
-						_color2.r = diffuse.r * _color2.r + emissive.r;
-						_color2.g = diffuse.g * _color2.g + emissive.g;
-						_color2.b = diffuse.b * _color2.b + emissive.b;
+						_color2.r = _color2.r * _diffuseColor.r + _emissiveColor.r;
+						_color2.g = _color2.g * _diffuseColor.g + _emissiveColor.g;
+						_color2.b = _color2.b * _diffuseColor.b + _emissiveColor.b;
 
-						_color3.r = diffuse.r * _color3.r + emissive.r;
-						_color3.g = diffuse.g * _color3.g + emissive.g;
-						_color3.b = diffuse.b * _color3.b + emissive.b;
+						_color3.r = _color3.r * _diffuseColor.r + _emissiveColor.r;
+						_color3.g = _color3.g * _diffuseColor.g + _emissiveColor.g;
+						_color3.b = _color3.b * _diffuseColor.b + _emissiveColor.b;
 
 						_color4.r = ( _color2.r + _color3.r ) * 0.5;
 						_color4.g = ( _color2.g + _color3.g ) * 0.5;
@@ -604,17 +632,21 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 						calculateLight( element.centroidWorld, element.normalWorld, _color );
 
-						_color.r = diffuse.r * _color.r + emissive.r;
-						_color.g = diffuse.g * _color.g + emissive.g;
-						_color.b = diffuse.b * _color.b + emissive.b;
+						_color.r = _color.r * _diffuseColor.r + _emissiveColor.r;
+						_color.g = _color.g * _diffuseColor.g + _emissiveColor.g;
+						_color.b = _color.b * _diffuseColor.b + _emissiveColor.b;
 
-						material.wireframe === true ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( _color );
+						material.wireframe === true
+							? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+							: fillPath( _color );
 
 					}
 
 				} else {
 
-					material.wireframe === true ? strokePath( material.color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( material.color );
+					material.wireframe === true
+						? strokePath( material.color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+						: fillPath( material.color );
 
 				}
 
@@ -625,7 +657,7 @@ THREE.CanvasRenderer = function ( parameters ) {
 					if ( material.map.mapping instanceof THREE.UVMapping ) {
 
 						_uvs = element.uvs[ 0 ];
-						patternPath( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _uvs[ uv1 ].u, _uvs[ uv1 ].v, _uvs[ uv2 ].u, _uvs[ uv2 ].v, _uvs[ uv3 ].u, _uvs[ uv3 ].v, material.map );
+						patternPath( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _uvs[ uv1 ].x, _uvs[ uv1 ].y, _uvs[ uv2 ].x, _uvs[ uv2 ].y, _uvs[ uv3 ].x, _uvs[ uv3 ].y, material.map );
 
 					}
 
@@ -659,7 +691,19 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 				} else {
 
-					material.wireframe === true ? strokePath( material.color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( material.color );
+					_color.copy( material.color );
+
+					if ( material.vertexColors === THREE.FaceColors ) {
+
+						_color.r *= element.color.r;
+						_color.g *= element.color.g;
+						_color.b *= element.color.b;
+
+					}
+
+					material.wireframe === true
+						? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+						: fillPath( _color );
 
 				}
 
@@ -686,7 +730,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 				_color.g = normalToComponent( element.normalWorld.y );
 				_color.b = normalToComponent( element.normalWorld.z );
 
-				material.wireframe === true ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( _color );
+				material.wireframe === true
+					? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+					: fillPath( _color );
 
 			}
 
@@ -720,10 +766,18 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 			if ( material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshPhongMaterial ) {
 
-				if ( _enableLighting === true ) {
+				_diffuseColor.copy( material.color );
+				_emissiveColor.copy( material.emissive );
 
-					var diffuse = material.color;
-					var emissive = material.emissive;
+				if ( material.vertexColors === THREE.FaceColors ) {
+
+					_diffuseColor.r *= element.color.r;
+					_diffuseColor.g *= element.color.g;
+					_diffuseColor.b *= element.color.b;
+
+				}
+
+				if ( _enableLighting === true ) {
 
 					if ( material.wireframe === false && material.shading == THREE.SmoothShading && element.vertexNormalsLength == 4 ) {
 
@@ -736,21 +790,21 @@ THREE.CanvasRenderer = function ( parameters ) {
 						calculateLight( element.v4.positionWorld, element.vertexNormalsWorld[ 3 ], _color3 );
 						calculateLight( element.v3.positionWorld, element.vertexNormalsWorld[ 2 ], _color4 );
 
-						_color1.r = diffuse.r * _color1.r + emissive.r;
-						_color1.g = diffuse.g * _color1.g + emissive.g;
-						_color1.b = diffuse.b * _color1.b + emissive.b;
+						_color1.r = _color1.r * _diffuseColor.r + _emissiveColor.r;
+						_color1.g = _color1.g * _diffuseColor.g + _emissiveColor.g;
+						_color1.b = _color1.b * _diffuseColor.b + _emissiveColor.b;
 
-						_color2.r = diffuse.r * _color2.r + emissive.r;
-						_color2.g = diffuse.g * _color2.g + emissive.g;
-						_color2.b = diffuse.b * _color2.b + emissive.b;
+						_color2.r = _color2.r * _diffuseColor.r + _emissiveColor.r;
+						_color2.g = _color2.g * _diffuseColor.g + _emissiveColor.g;
+						_color2.b = _color2.b * _diffuseColor.b + _emissiveColor.b;
 
-						_color3.r = diffuse.r * _color3.r + emissive.r;
-						_color3.g = diffuse.g * _color3.g + emissive.g;
-						_color3.b = diffuse.b * _color3.b + emissive.b;
+						_color3.r = _color3.r * _diffuseColor.r + _emissiveColor.r;
+						_color3.g = _color3.g * _diffuseColor.g + _emissiveColor.g;
+						_color3.b = _color3.b * _diffuseColor.b + _emissiveColor.b;
 
-						_color4.r = diffuse.r * _color4.r + emissive.r;
-						_color4.g = diffuse.g * _color4.g + emissive.g;
-						_color4.b = diffuse.b * _color4.b + emissive.b;
+						_color4.r = _color4.r * _diffuseColor.r + _emissiveColor.r;
+						_color4.g = _color4.g * _diffuseColor.g + _emissiveColor.g;
+						_color4.b = _color4.b * _diffuseColor.b + _emissiveColor.b;
 
 						_image = getGradientTexture( _color1, _color2, _color3, _color4 );
 
@@ -770,29 +824,49 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 						calculateLight( element.centroidWorld, element.normalWorld, _color );
 
-						_color.r = diffuse.r * _color.r + emissive.r;
-						_color.g = diffuse.g * _color.g + emissive.g;
-						_color.b = diffuse.b * _color.b + emissive.b;
+						_color.r = _color.r * _diffuseColor.r + _emissiveColor.r;
+						_color.g = _color.g * _diffuseColor.g + _emissiveColor.g;
+						_color.b = _color.b * _diffuseColor.b + _emissiveColor.b;
 
 						drawQuad( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _v4x, _v4y );
 
-						material.wireframe === true ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( _color );
+						material.wireframe === true
+							? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+							: fillPath( _color );
 
 					}
 
 				} else {
 
+					_color.r = _diffuseColor.r + _emissiveColor.r;
+					_color.g = _diffuseColor.g + _emissiveColor.g;
+					_color.b = _diffuseColor.b + _emissiveColor.b;
+
 					drawQuad( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _v4x, _v4y );
 
-					material.wireframe === true ? strokePath( material.color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( material.color );
+					material.wireframe === true
+						? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+						: fillPath( _color );
 
 				}
 
 			} else if ( material instanceof THREE.MeshBasicMaterial ) {
 
+				_color.copy( material.color );
+
+				if ( material.vertexColors === THREE.FaceColors ) {
+
+					_color.r *= element.color.r;
+					_color.g *= element.color.g;
+					_color.b *= element.color.b;
+
+				}
+
 				drawQuad( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _v4x, _v4y );
 
-				material.wireframe === true ? strokePath( material.color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( material.color );
+				material.wireframe === true
+					? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+					: fillPath( _color );
 
 			} else if ( material instanceof THREE.MeshNormalMaterial ) {
 
@@ -802,7 +876,9 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 				drawQuad( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _v4x, _v4y );
 
-				material.wireframe === true ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin ) : fillPath( _color );
+				material.wireframe === true
+					? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+					: fillPath( _color );
 
 			} else if ( material instanceof THREE.MeshDepthMaterial ) {
 
@@ -856,17 +932,17 @@ THREE.CanvasRenderer = function ( parameters ) {
 			setLineWidth( linewidth );
 			setLineCap( linecap );
 			setLineJoin( linejoin );
-			setStrokeStyle( color.getContextStyle() );
+			setStrokeStyle( color.getStyle() );
 
 			_context.stroke();
 
-			_bboxRect.inflate( linewidth * 2 );
+			_elemBox.expandByScalar( linewidth * 2 );
 
 		}
 
 		function fillPath( color ) {
 
-			setFillStyle( color.getContextStyle() );
+			setFillStyle( color.getStyle() );
 			_context.fill();
 
 		}

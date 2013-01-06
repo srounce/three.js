@@ -7,9 +7,12 @@
  *
  *  uniforms: { "parameter1": { type: "f", value: 1.0 }, "parameter2": { type: "i" value2: 2 } },
  *
+ *  defines: { "label" : "value" },
+ *
  *  shading: THREE.SmoothShading,
  *  blending: THREE.NormalBlending,
  *  depthTest: <bool>,
+ *  depthWrite: <bool>,
  *
  *  wireframe: <boolean>,
  *  wireframeLinewidth: <float>,
@@ -33,6 +36,7 @@ THREE.ShaderMaterial = function ( parameters ) {
 	this.fragmentShader = "void main() {}";
 	this.vertexShader = "void main() {}";
 	this.uniforms = {};
+	this.defines = {};
 	this.attributes = null;
 
 	this.shading = THREE.SmoothShading;
@@ -65,8 +69,11 @@ THREE.ShaderMaterial.prototype.clone = function () {
 
 	material.fragmentShader = this.fragmentShader;
 	material.vertexShader = this.vertexShader;
-	material.uniforms = this.uniforms;
+
+	material.uniforms = THREE.UniformsUtils.clone( this.uniforms );
+
 	material.attributes = this.attributes;
+	material.defines = this.defines;
 
 	material.shading = this.shading;
 

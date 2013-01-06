@@ -5,7 +5,9 @@
 
 THREE.Material = function () {
 
-	this.id = THREE.MaterialCount ++;
+	THREE.EventDispatcher.call( this );
+
+	this.id = THREE.MaterialIdCount ++;
 
 	this.name = '';
 
@@ -60,9 +62,9 @@ THREE.Material.prototype.setValues = function ( values ) {
 
 				currentValue.copy( newValue );
 
-			} else if ( currentValue instanceof THREE.Color && typeof( newValue ) === "number" ) {
+			} else if ( currentValue instanceof THREE.Color ) {
 
-				currentValue.setHex( newValue );
+				currentValue.set( newValue );
 
 			} else if ( currentValue instanceof THREE.Vector3 && newValue instanceof THREE.Vector3 ) {
 
@@ -114,4 +116,10 @@ THREE.Material.prototype.clone = function ( material ) {
 
 };
 
-THREE.MaterialCount = 0;
+THREE.Material.prototype.dispose = function () {
+
+	this.dispatchEvent( { type: 'dispose' } );
+
+};
+
+THREE.MaterialIdCount = 0;

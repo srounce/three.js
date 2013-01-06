@@ -33,13 +33,13 @@
 	<body>
 
 		<div id="info">
-			<a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - webgl particle billboards colors example
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl particle billboards colors example
 		</div>
 
 		<script src="../build/three.min.js"></script>
 
 		<script src="js/Detector.js"></script>
-		<script src="js/Stats.js"></script>
+		<script src="js/libs/stats.min.js"></script>
 
 		<script>
 
@@ -86,7 +86,7 @@
 
 				geometry.colors = colors;
 
-				material = new THREE.ParticleBasicMaterial( { size: 85, map: sprite, vertexColors: true } );
+				material = new THREE.ParticleBasicMaterial( { size: 85, map: sprite, vertexColors: true, transparent: true } );
 				material.color.setHSV( 1.0, 0.2, 0.8 );
 
 				particles = new THREE.ParticleSystem( geometry, material );

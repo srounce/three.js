@@ -17,7 +17,7 @@
 	<body>
 
 		<script src="../build/three.min.js"></script>
-		<script src="js/Stats.js"></script>
+		<script src="js/libs/stats.min.js"></script>
 
 		<script>
 
@@ -60,8 +60,8 @@
 					mesh.position.y = Math.random() * 2000 - 1000;
 					mesh.position.z = Math.random() * 2000 - 1000;
 
-					mesh.rotation.x = Math.random() * 360 * ( Math.PI / 180 );
-					mesh.rotation.y = Math.random() * 360 * ( Math.PI / 180 );
+					mesh.rotation.x = Math.random() * 2 * Math.PI;
+					mesh.rotation.y = Math.random() * 2 * Math.PI;
 
 					mesh.matrixAutoUpdate = false;
 					mesh.updateMatrix();

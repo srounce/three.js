@@ -9,8 +9,8 @@
     },
 
     "devDependencies": {
-    	"uglify-js": "*",
-    	"argsparser" : "*"
+    	"uglify-js2": "*",
+    	"argparse" : "*"
     },
     
     "repository" : {

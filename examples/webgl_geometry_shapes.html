@@ -18,7 +18,7 @@
 
 		<script src="../build/three.min.js"></script>
 
-		<script src="js/Stats.js"></script>
+		<script src="js/libs/stats.min.js"></script>
 
 
 		<script>
@@ -110,7 +110,7 @@
 
 					// vertices from real points
 
-					var pgeo = THREE.GeometryUtils.clone( points );
+					var pgeo = points.clone();
 					var particles = new THREE.ParticleSystem( pgeo, new THREE.ParticleBasicMaterial( { color: color, size: 2, opacity: 0.75 } ) );
 					particles.position.set( x, y, z + 75 );
 					particles.rotation.set( rx, ry, rz );
@@ -127,7 +127,7 @@
 
 					// equidistance sampled points
 
-					var pgeo = THREE.GeometryUtils.clone( spacedPoints );
+					var pgeo = spacedPoints.clone();
 					var particles2 = new THREE.ParticleSystem( pgeo, new THREE.ParticleBasicMaterial( { color: color, size: 2, opacity: 0.5 } ) );
 					particles2.position.set( x, y, z + 125 );
 					particles2.rotation.set( rx, ry, rz );
@@ -342,10 +342,10 @@
 				addShape( triangleShape, extrudeSettings, 0xffee00, -180, 0, 0, 0, 0, 0, 1 );
 				addShape( roundedRectShape, extrudeSettings, 0x005500, -150, 150, 0, 0, 0, 0, 1 );
 				addShape( squareShape, extrudeSettings, 0x0055ff, 150, 100, 0, 0, 0, 0, 1 );
-				addShape( heartShape, extrudeSettings, 0xff1100, 0, 100, 0, Math.PI, 0, 0, 1 );
+				addShape( heartShape, extrudeSettings, 0xff1100, 60, 100, 0, 0, 0, Math.PI, 1 );
 				addShape( circleShape, extrudeSettings, 0x00ff11, 120, 250, 0, 0, 0, 0, 1 );
 				addShape( fishShape, extrudeSettings, 0x222222, -60, 200, 0, 0, 0, 0, 1 );
-				addShape( smileyShape, extrudeSettings, 0xee00ff, -270, 250, 0, Math.PI, 0, 0, 1 );
+				addShape( smileyShape, extrudeSettings, 0xee00ff, -200, 250, 0, 0, 0, Math.PI, 1 );
 				addShape( arcShape, extrudeSettings, 0xbb4422, 150, 0, 0, 0, 0, 0, 1 );
 
 				extrudeSettings.extrudePath = apath;
