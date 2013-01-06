@@ -3,7 +3,7 @@ three.js
 
 #### JavaScript 3D library ####
 
-The aim of the project is to create a lightweight 3D library with a very low level of complexity — in other words, for dummies. The library provides &lt;canvas&gt;, &lt;svg&gt; and WebGL renderers.
+The aim of the project is to create a lightweight 3D library with a very low level of complexity — in other words, for dummies. The library provides &lt;canvas&gt;, &lt;svg&gt;, CSS3D and WebGL renderers.
 
 [Examples](http://mrdoob.github.com/three.js/) — [Documentation](http://mrdoob.github.com/three.js/docs/) — [Migrating](https://github.com/mrdoob/three.js/wiki/Migration) — [Help](http://stackoverflow.com/questions/tagged/three.js)
 
@@ -64,6 +64,85 @@ This code creates a scene, then creates a camera, adds the camera and cube to th
 ```
 
 ### Change log ###
+
+
+2012 12 25 - **r54** (411,352 KB, gzip: 98,639 KB)
+
+* Added nodejs, perl, python and ruby based localhost server. ([zz85](http://github.com/zz85))
+* Added support for alphaTest to `Sprite`. ([alteredq](http://github.com/alteredq))
+* Added `WebGLDeferredRenderer` with all sorts of goodness. ([mpanknin](http://github.com/mpanknin) and [alteredq](http://github.com/alteredq))
+* Changed `Sprite` to use `SpriteMaterial` instead of custom object. ([alteredq](http://github.com/alteredq))
+* Added `sourcemap` option to python and nodejs build systems. ([zz85](http://github.com/zz85) and [gero3](http://github.com/gero3))
+* Non-indexed `BufferGeometry`. ([benaadams](http://github.com/benaadams))
+* Added support for loading cubemap DDS textures. ([MiiBond](http://github.com/MiiBond))
+* Added manual mipmapping support to `Texture` and `DataTexture`. ([benaadams](http://github.com/benaadams) and [alteredq](http://github.com/alteredq))
+* Added style strings support `Color`. ([mrdoob](http://github.com/mrdoob))
+* Added new fbx converter. ([zfedoran](http://github.com/zfedoran))
+* Improvements to `SceneLoader`. ([RommelVR](http://github.com/RommelVR) and [alteredq](http://github.com/alteredq))
+* Added `Plane` class and implemented in `Frustum`. ([bhouston](http://github.com/bhouston))
+* Added `Box3`, `Sphere` math classes and implemented in `Geometry`. ([bhouston](http://github.com/bhouston))
+* Added bilinear filtered shadow map. ([MiiBond](http://github.com/MiiBond))
+* Added test framework. ([bhouston](http://github.com/bhouston))
+* Replaced `UV` with `Vector2`. ([mrdoob](http://github.com/mrdoob))
+* Renamed `Ray` to `Raycaster` and added new `Ray` math class. ([bhouston](http://github.com/bhouston))
+* Improvements to `CSS3DRenderer`. ([mrdoob](http://github.com/mrdoob), [benaadams](http://github.com/benaadams) and [zz85](http://github.com/zz85))
+* Implemented `.dispose()` to `Geometry`, `BufferGeometry`, `Texture`, `Material` and `WebGLRenderTarget` for deallocating from GPU. ([mrdoob](http://github.com/mrdoob) and [alteredq](http://github.com/alteredq))
+* Moved `SubdivisionModifier` out of the build to `examples/js/modifiers`. ([mrdoob](http://github.com/mrdoob))
+* Improvements to `ColladaLoader`. ([dgossow](http://github.com/dgossow))
+* Added Blender 2.65 exporter. ([tapio](http://github.com/tapio))
+* Added `.setMaterialIndex()` to `GeometryUtils`. ([gero3](http://github.com/gero3))
+* Added benchmark framework. ([bhouston](http://github.com/bhouston))
+* Fixed Blender scene exporter rotations. ([alteredq](http://github.com/alteredq) and [WestLangley](http://github.com/WestLangley))
+* Added `devicePixelRatio` support to `CanvasRenderer` and `WebGLRenderer`. ([mrdoob](http://github.com/mrdoob))
+
+
+2012 11 15 - **r53** (392,799 KB, gzip: 96,044 KB)
+
+* Lots of improvements to [editor](http://mrdoob.github.com/three.js/editor/). Including possibility to export geometry and scene. ([alteredq](http://github.com/alteredq) and [mrdoob](http://github.com/mrdoob))
+* `Sprite` no longer gets its size from the texture. ([alteredq](http://github.com/alteredq) and [mrdoob](http://github.com/mrdoob))
+* Improved `CSS3DRenderer`. ([mrdoob](http://github.com/mrdoob) and [alteredq](http://github.com/alteredq))
+* Added support for vertex normals in `Ribbon`. ([alteredq](http://github.com/alteredq))
+* `Object3D`'s `.clone()` is now recursive. ([mrdoob](http://github.com/mrdoob))
+* Added support for fog in `Sprite`. ([alteredq](http://github.com/alteredq))
+* Scene format now supports nested lights, cameras and SkinnedMesh, OBJ, VTK, STL, UTF8 and Collada files. ([alteredq](http://github.com/alteredq))
+* `Object3D`'s `.lookAt()` now working when using quaternions. ([motin](http://github.com/motin))
+* Added touch support to `TrackballControls`. ([mrdoob](http://github.com/mrdoob))
+* Object sorting in `WebGLRenderer` is now stable, regardless of browser implementation. ([alteredq](http://github.com/alteredq))
+* `MeshPhongMaterial`'s `perPixel` is not `true` by default. ([alteredq](http://github.com/alteredq))
+* Added `LineDashedMaterial`. ([alteredq](http://github.com/alteredq))
+* Added `.setContextStyle` to `Color`. ([greyscales](http://github.com/greyscales))
+* Corrected normal matrix calculations. ([WestLangley](http://github.com/WestLangley))
+* Added `KaleidoShader`, `MirrorShader` and `RGBShiftShader`. ([felixturner](http://github.com/felixturner))
+* Added area weighted vertex normals computation to `Geometry`. ([alteredq](http://github.com/alteredq))
+* Moved geometry.materials to `MeshFaceMaterial`. ([gero3](http://github.com/gero3), [alteredq](http://github.com/alteredq) and [mrdoob](http://github.com/mrdoob))
+* Removed `materials` and `sides` from `CubeGeometry`. ([mrdoob](http://github.com/mrdoob))
+* Move `GeometryUtils`'s `.clone()` to `Geometry`. ([mrdoob](http://github.com/mrdoob))
+
+
+2012 10 15 - **r52** (379,442 KB, gzip: 94,126 KB)
+
+* New node.js build system. ([gero3](http://github.com/gero3))
+* Proper edge handling in `SubdivisionModifier`. ([zz85](http://github.com/zz85))
+* Added `defines` parameter for adding preprocessor definitions to `ShaderMaterial`. ([alteredq](http://github.com/alteredq))
+* Split `ShaderExtras` into single files (`BasicShader`, `BlendShader`, `ConvolutionShader`, ... ). ([mrdoob](http://github.com/mrdoob))
+* Added `HueSaturationShader` and `BrightnessContrastShader`. ([tapio](http://github.com/tapio))
+* Fixed `ColladaLoader` not loading sometimes. ([tapio](http://github.com/tapio))
+* Added `material.vertexColors = THREE.FaceColor` support to `CanvasRenderer` and `SVGRenderer`. ([mrdoob](http://github.com/mrdoob))
+* Added `Object3D.defaultEulerOrder`. ([mrdoob](http://github.com/mrdoob))
+* Replaced `SceneUtils.traverseHierarchy` and `SceneUtils.showHierarchy` with `object.traverse`. ([mrdoob](http://github.com/mrdoob))
+* Added `PointerLockControls`. ([mrdoob](http://github.com/mrdoob))
+* Completed more [documentation](http://mrdoob.github.com/three.js/docs/) pages. ([sole](http://github.com/sole))
+* Split `SceneUtils.cloneObject` into `*.clone()`. ([mrdoob](http://github.com/mrdoob))
+* Simplified `AxisHelper`. ([mrdoob](http://github.com/mrdoob))
+* Added `GeometryExporter`. ([mrdoob](http://github.com/mrdoob))
+* Improved `OrbitControls`. ([WestLangley](http://github.com/WestLangley))
+* Added `GeometryLibrary`, `MaterialLibrary`, `TextureLibrary` and `ObjectLibrary` (bear in mind that you can't rely on the GC now. Call `*.deallocate()` for removing). ([mrdoob](http://github.com/mrdoob))
+* Moved `*Controls` out of the lib. ([mrdoob](http://github.com/mrdoob))
+* Fixed shadows getting animated when skinning / morphing was disabled. ([alteredq](http://github.com/alteredq))
+* Added `Manual` section to the [documentation](http://mrdoob.github.com/three.js/docs/) pages. ([oal](http://github.com/oal))
+* Added `.angleTo()` to `Vector3`. ([Wilt](http://github.com/Wilt))
+* Many improvements to the [editor](http://mrdoob.github.com/three.js/editor/). ([mrdoob](http://github.com/mrdoob) and [alteredq](http://github.com/alteredq))
+
 
 2012 09 15 - **r51** (405,491 KB, gzip: 99,389 KB)
 
