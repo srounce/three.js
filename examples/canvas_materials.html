@@ -63,9 +63,9 @@
 
 				// Spheres
 
-				var geometry = new THREE.SphereGeometry( 100, 14, 7, false );
+				var geometry = new THREE.SphereGeometry( 100, 14, 7 );
 
-				geometry.materials = [
+				var materials = [
 
 					new THREE.MeshBasicMaterial( { color: 0x00ffff, wireframe: true, side: THREE.DoubleSide } ),
 					new THREE.MeshBasicMaterial( { color: 0xff0000, blending: THREE.AdditiveBlending, side: THREE.DoubleSide } ),
@@ -73,6 +73,7 @@
 					new THREE.MeshLambertMaterial( { color: 0xffffff, shading: THREE.SmoothShading, overdraw: true } ),
 					new THREE.MeshDepthMaterial( { overdraw: true } ),
 					new THREE.MeshNormalMaterial( { overdraw: true } ),
+					new THREE.MeshNormalMaterial( { shading: THREE.SmoothShading, overdraw: true } ),
 					new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/land_ocean_ice_cloud_2048.jpg' ) } ),
 					new THREE.MeshBasicMaterial( { envMap: THREE.ImageUtils.loadTexture( 'textures/envmap.png', new THREE.SphericalReflectionMapping() ) } )
 
@@ -81,17 +82,17 @@
 				for ( var i = 0, l = geometry.faces.length; i < l; i ++ ) {
 
 					var face = geometry.faces[ i ];
-					if ( Math.random() > 0.5 ) face.materialIndex = Math.floor( Math.random() * geometry.materials.length );
+					if ( Math.random() > 0.5 ) face.materialIndex = Math.floor( Math.random() * materials.length );
 
 				}
 
-				geometry.materials.push( new THREE.MeshFaceMaterial() );
+				materials.push( new THREE.MeshFaceMaterial( materials ) );
 
 				objects = [];
 
-				for ( var i = 0, l = geometry.materials.length; i < l; i ++ ) {
+				for ( var i = 0, l = materials.length; i < l; i ++ ) {
 
-					var sphere = new THREE.Mesh( geometry, geometry.materials[ i ] );
+					var sphere = new THREE.Mesh( geometry, materials[ i ] );
 
 					sphere.position.x = ( i % 5 ) * 200 - 400;
 					sphere.position.z = Math.floor( i / 5 ) * 200 - 200;
@@ -135,9 +136,7 @@
 				scene.add( pointLight );
 
 				renderer = new THREE.CanvasRenderer();
-				// renderer = new THREE.WebGLRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
-
 				container.appendChild( renderer.domElement );
 
 				var debugCanvas = document.createElement( 'canvas' );

@@ -18,8 +18,16 @@ THREE.Projector = function() {
 	_vector3 = new THREE.Vector3(),
 	_vector4 = new THREE.Vector4(),
 
+	_viewMatrix = new THREE.Matrix4(),
 	_viewProjectionMatrix = new THREE.Matrix4(),
+
+	_modelMatrix,
 	_modelViewProjectionMatrix = new THREE.Matrix4(),
+
+	_normalMatrix = new THREE.Matrix3(),
+	_normalViewMatrix = new THREE.Matrix3(),
+
+	_centroid = new THREE.Vector3(),
 
 	_frustum = new THREE.Frustum(),
 
@@ -32,10 +40,9 @@ THREE.Projector = function() {
 
 		camera.matrixWorldInverse.getInverse( camera.matrixWorld );
 
-		_viewProjectionMatrix.multiply( camera.projectionMatrix, camera.matrixWorldInverse );
-		_viewProjectionMatrix.multiplyVector3( vector );
+		_viewProjectionMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
 
-		return vector;
+		return vector.applyMatrix4( _viewProjectionMatrix );
 
 	};
 
@@ -43,28 +50,25 @@ THREE.Projector = function() {
 
 		camera.projectionMatrixInverse.getInverse( camera.projectionMatrix );
 
-		_viewProjectionMatrix.multiply( camera.matrixWorld, camera.projectionMatrixInverse );
-		_viewProjectionMatrix.multiplyVector3( vector );
+		_viewProjectionMatrix.multiplyMatrices( camera.matrixWorld, camera.projectionMatrixInverse );
 
-		return vector;
+		return vector.applyMatrix4( _viewProjectionMatrix );
 
 	};
 
 	this.pickingRay = function ( vector, camera ) {
 
-		var end, ray, t;
-
 		// set two vectors with opposing z values
 		vector.z = -1.0;
-		end = new THREE.Vector3( vector.x, vector.y, 1.0 );
+		var end = new THREE.Vector3( vector.x, vector.y, 1.0 );
 
 		this.unprojectVector( vector, camera );
 		this.unprojectVector( end, camera );
 
 		// find direction from vector to end
-		end.subSelf( vector ).normalize();
+		end.sub( vector ).normalize();
 
-		return new THREE.Ray( vector, end );
+		return new THREE.Raycaster( vector, end );
 
 	};
 
@@ -90,7 +94,7 @@ THREE.Projector = function() {
 
 				} else if ( object instanceof THREE.Mesh || object instanceof THREE.Line ) {
 
-					if ( object.frustumCulled === false || _frustum.contains( object ) === true ) {
+					if ( object.frustumCulled === false || _frustum.intersectsObject( object ) === true ) {
 
 						_object = getNextObjectInPool();
 						_object.object = object;
@@ -102,7 +106,7 @@ THREE.Projector = function() {
 						} else {
 
 							_vector3.copy( object.matrixWorld.getPosition() );
-							_viewProjectionMatrix.multiplyVector3( _vector3 );
+							_vector3.applyMatrix4( _viewProjectionMatrix );
 							_object.z = _vector3.z;
 
 						}
@@ -125,7 +129,7 @@ THREE.Projector = function() {
 					} else {
 
 						_vector3.copy( object.matrixWorld.getPosition() );
-						_viewProjectionMatrix.multiplyVector3( _vector3 );
+						_vector3.applyMatrix4( _viewProjectionMatrix );
 						_object.z = _vector3.z;
 
 					}
@@ -144,7 +148,7 @@ THREE.Projector = function() {
 					} else {
 
 						_vector3.copy( object.matrixWorld.getPosition() );
-						_viewProjectionMatrix.multiplyVector3( _vector3 );
+						_vector3.applyMatrix4( _viewProjectionMatrix );
 						_object.z = _vector3.z;
 
 					}
@@ -171,10 +175,9 @@ THREE.Projector = function() {
 
 		var near = camera.near, far = camera.far, visible = false,
 		o, ol, v, vl, f, fl, n, nl, c, cl, u, ul, object,
-		modelMatrix, rotationMatrix,
-		geometry, geometryMaterials, vertices, vertex, vertexPositionScreen,
-		faces, face, faceVertexNormals, normal, faceVertexUvs, uvs,
-		v1, v2, v3, v4, isFaceMaterial, material, side;
+		geometry, vertices, vertex, vertexPositionScreen,
+		faces, face, faceVertexNormals, faceVertexUvs, uvs,
+		v1, v2, v3, v4, isFaceMaterial, objectMaterials;
 
 		_face3Count = 0;
 		_face4Count = 0;
@@ -187,49 +190,53 @@ THREE.Projector = function() {
 
 		if ( camera.parent === undefined ) camera.updateMatrixWorld();
 
-		camera.matrixWorldInverse.getInverse( camera.matrixWorld );
+		_viewMatrix.copy( camera.matrixWorldInverse.getInverse( camera.matrixWorld ) );
+		_viewProjectionMatrix.multiplyMatrices( camera.projectionMatrix, _viewMatrix );
 
-		_viewProjectionMatrix.multiply( camera.projectionMatrix, camera.matrixWorldInverse );
+		_normalViewMatrix.getInverse( _viewMatrix );
+		_normalViewMatrix.transpose();
 
 		_frustum.setFromMatrix( _viewProjectionMatrix );
 
 		_renderData = projectGraph( scene, sortObjects );
 
-		for ( o = 0, ol = _renderData.objects.length; o < ol; o++ ) {
+		for ( o = 0, ol = _renderData.objects.length; o < ol; o ++ ) {
 
 			object = _renderData.objects[ o ].object;
 
-			modelMatrix = object.matrixWorld;
+			_modelMatrix = object.matrixWorld;
 
 			_vertexCount = 0;
 
 			if ( object instanceof THREE.Mesh ) {
 
 				geometry = object.geometry;
-				geometryMaterials = object.geometry.materials;
+
 				vertices = geometry.vertices;
 				faces = geometry.faces;
 				faceVertexUvs = geometry.faceVertexUvs;
 
-				rotationMatrix = object.matrixRotationWorld.extractRotation( modelMatrix );
+				_normalMatrix.getInverse( _modelMatrix );
+				_normalMatrix.transpose();
 
 				isFaceMaterial = object.material instanceof THREE.MeshFaceMaterial;
-				side = object.material.side;
+				objectMaterials = isFaceMaterial === true ? object.material : null;
 
 				for ( v = 0, vl = vertices.length; v < vl; v ++ ) {
 
 					_vertex = getNextVertexInPool();
 					_vertex.positionWorld.copy( vertices[ v ] );
 
-					modelMatrix.multiplyVector3( _vertex.positionWorld );
+					_vertex.positionWorld.applyMatrix4( _modelMatrix );
 
 					_vertex.positionScreen.copy( _vertex.positionWorld );
-					_viewProjectionMatrix.multiplyVector4( _vertex.positionScreen );
+					_vertex.positionScreen.applyMatrix4( _viewProjectionMatrix );
 
 					_vertex.positionScreen.x /= _vertex.positionScreen.w;
 					_vertex.positionScreen.y /= _vertex.positionScreen.w;
+					_vertex.positionScreen.z /= _vertex.positionScreen.w;
 
-					_vertex.visible = _vertex.positionScreen.z > near && _vertex.positionScreen.z < far;
+					_vertex.visible = _vertex.positionScreen.z > -1 && _vertex.positionScreen.z < 1;
 
 				}
 
@@ -237,11 +244,13 @@ THREE.Projector = function() {
 
 					face = faces[ f ];
 
-					material = isFaceMaterial === true ? geometryMaterials[ face.materialIndex ] : object.material;
+					var material = isFaceMaterial === true
+						? objectMaterials.materials[ face.materialIndex ]
+						: object.material;
 
 					if ( material === undefined ) continue;
 
-					side = material.side;
+					var side = material.side;
 
 					if ( face instanceof THREE.Face3 ) {
 
@@ -312,27 +321,42 @@ THREE.Projector = function() {
 
 					}
 
-					_face.normalWorld.copy( face.normal );
+					_face.normalModel.copy( face.normal );
 
-					if ( visible === false && ( side === THREE.BackSide || side === THREE.DoubleSide ) ) _face.normalWorld.negate();
-					rotationMatrix.multiplyVector3( _face.normalWorld );
+					if ( visible === false && ( side === THREE.BackSide || side === THREE.DoubleSide ) ) {
 
-					_face.centroidWorld.copy( face.centroid );
-					modelMatrix.multiplyVector3( _face.centroidWorld );
+						_face.normalModel.negate();
 
-					_face.centroidScreen.copy( _face.centroidWorld );
-					_viewProjectionMatrix.multiplyVector3( _face.centroidScreen );
+					}
+
+					_face.normalModel.applyMatrix3( _normalMatrix );
+					_face.normalModel.normalize();
+
+					_face.normalModelView.copy( _face.normalModel );
+					_face.normalModelView.applyMatrix3( _normalViewMatrix );
+
+					_face.centroidModel.copy( face.centroid );
+					_face.centroidModel.applyMatrix4( _modelMatrix );
 
 					faceVertexNormals = face.vertexNormals;
 
 					for ( n = 0, nl = faceVertexNormals.length; n < nl; n ++ ) {
 
-						normal = _face.vertexNormalsWorld[ n ];
-						normal.copy( faceVertexNormals[ n ] );
+						var normalModel = _face.vertexNormalsModel[ n ];
+						normalModel.copy( faceVertexNormals[ n ] );
 
-						if ( visible === false && ( side === THREE.BackSide || side === THREE.DoubleSide ) ) normal.negate();
+						if ( visible === false && ( side === THREE.BackSide || side === THREE.DoubleSide ) ) {
 
-						rotationMatrix.multiplyVector3( normal );
+							normalModel.negate();
+
+						}
+
+						normalModel.applyMatrix3( _normalMatrix );
+						normalModel.normalize();
+
+						var normalModelView = _face.vertexNormalsModelView[ n ];
+						normalModelView.copy( normalModel );
+						normalModelView.applyMatrix3( _normalViewMatrix );
 
 					}
 
@@ -355,7 +379,10 @@ THREE.Projector = function() {
 					_face.color = face.color;
 					_face.material = material;
 
-					_face.z = _face.centroidScreen.z;
+					_centroid.copy( _face.centroidModel )
+					_centroid.applyMatrix4( _viewProjectionMatrix );
+
+					_face.z = _centroid.z;
 
 					_renderData.elements.push( _face );
 
@@ -363,13 +390,13 @@ THREE.Projector = function() {
 
 			} else if ( object instanceof THREE.Line ) {
 
-				_modelViewProjectionMatrix.multiply( _viewProjectionMatrix, modelMatrix );
+				_modelViewProjectionMatrix.multiplyMatrices( _viewProjectionMatrix, _modelMatrix );
 
 				vertices = object.geometry.vertices;
 
 				v1 = getNextVertexInPool();
 				v1.positionScreen.copy( vertices[ 0 ] );
-				_modelViewProjectionMatrix.multiplyVector4( v1.positionScreen );
+				v1.positionScreen.applyMatrix4( _modelViewProjectionMatrix );
 
 				// Handle LineStrip and LinePieces
 				var step = object.type === THREE.LinePieces ? 2 : 1;
@@ -378,7 +405,7 @@ THREE.Projector = function() {
 
 					v1 = getNextVertexInPool();
 					v1.positionScreen.copy( vertices[ v ] );
-					_modelViewProjectionMatrix.multiplyVector4( v1.positionScreen );
+					v1.positionScreen.applyMatrix4( _modelViewProjectionMatrix );
 
 					if ( ( v + 1 ) % step > 0 ) continue;
 
@@ -415,12 +442,12 @@ THREE.Projector = function() {
 
 			object = _renderData.sprites[ o ].object;
 
-			modelMatrix = object.matrixWorld;
+			_modelMatrix = object.matrixWorld;
 
 			if ( object instanceof THREE.Particle ) {
 
-				_vector4.set( modelMatrix.elements[12], modelMatrix.elements[13], modelMatrix.elements[14], 1 );
-				_viewProjectionMatrix.multiplyVector4( _vector4 );
+				_vector4.set( _modelMatrix.elements[12], _modelMatrix.elements[13], _modelMatrix.elements[14], 1 );
+				_vector4.applyMatrix4( _viewProjectionMatrix );
 
 				_vector4.z /= _vector4.w;
 
@@ -619,8 +646,8 @@ THREE.Projector = function() {
 			} else {
 
 				// Update the s1 and s2 vertices to match the clipped line segment.
-				s1.lerpSelf( s2, alpha1 );
-				s2.lerpSelf( s1, 1 - alpha2 );
+				s1.lerp( s2, alpha1 );
+				s2.lerp( s1, 1 - alpha2 );
 
 				return true;
 
